@@ -78,7 +78,26 @@ class Lexicon:
         # Coding Task 1
         # Read in content of the embedding file and save 
         # the word embeddings to some data structure
+
+        # open file for read
+        f = open(file, 'r')
         
+        # parse every line and add word to embedding dict
+        next_line = f.readline()
+        while next_line != '':
+            # get entire row
+            row_vector = next_line.split()
+
+            # separate word from values
+            word = row_vector[0]
+            embeddings = row_vector[1:]
+
+            # add word to embedding dictionary
+            self.word_emb_dict[word] = np.array(embeddings).astype(float)
+
+            # read next line
+            next_line = f.readline()
+
         ##################################################
 
     def get_vector(self, word: String):
@@ -87,7 +106,7 @@ class Lexicon:
         # Coding Task 1
         # You might want to have a dedicated function
         # to return word vector of a specific word
-        return []
+        return self.word_emb_dict[word]
         ##################################################
 
     def find_nearest_words(self, word, exclude_w, *, n = 5, plus: Optional[str] = None, minus: Optional[str] = None):
@@ -120,7 +139,39 @@ class Lexicon:
 
         ##################################################
         # Coding Task 3 and 4
-        return []
+
+        # get a list of keys and a list of values
+        keys = list(self.word_emb_dict.keys())
+        values = np.array(list(self.word_emb_dict.values()))
+
+        # set up target word vector and exclusions
+        target_word_vector = self.get_vector(word)
+        exclusions = exclude_w
+        
+        # if plus or minus are given, adjust vector and exclusions
+        if plus:
+            target_word_vector += self.get_vector(plus)
+            exclusions.add(plus)
+        if minus:
+            target_word_vector -= self.get_vector(minus)
+            exclusions.add(minus)
+
+        # get distances from target word
+        distances = list(euclidean_distance(target_word_vector, values))
+
+        # get list of key-value tuples of word-distance shape
+        kv_pairs = list(tuple(zip(keys, distances)))
+
+        # sort distances from lowest to highest
+        sorted_kv_pairs = sorted(kv_pairs, key=lambda x: x[1])
+
+        # exclude unwanted words
+        excluded_kv_pairs = [x for x in sorted_kv_pairs if x[0] not in exclusions]
+
+        # take top n items
+        top_n_pairs = excluded_kv_pairs[0:n]
+
+        return top_n_pairs
         ##################################################
 
 def euclidean_distance(v1, v2):
@@ -136,8 +187,27 @@ def euclidean_distance(v1, v2):
     # We set axis=0 so the norm is calculated along the 0 axis rather than the matrix norm
     # This function should work for both cases: 1) both v1 and v2 are 1-D array
     #                                        or 2) v1 is 1D array and v2 is 2D matrix for batch calculation
-    
-    return 0
+
+    # find norms of vectors
+    v1_norm = np.linalg.norm(v1, axis=0)
+
+    # catch both cases
+    if len(v2.shape) == 1:
+        v2_norm = np.linalg.norm(v2, axis=0)
+    else:
+        v2_norm = np.linalg.norm(v2, axis=1, keepdims=True)
+
+
+    # find the normalized difference
+    difference = (v1/v1_norm) - (v2/v2_norm)
+
+    # find the distance between v1 and v2
+    if len(v2.shape) == 1:
+        distance = np.linalg.norm(difference, axis=0)
+    else:
+        distance = np.linalg.norm(difference, axis=1)
+
+    return distance
     #################################################
     
 
